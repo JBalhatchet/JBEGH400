@@ -66,24 +66,7 @@ def main():
         min_tracking_confidence=min_tracking_confidence,
     )
 
-    keypoint_classifier = KeyPointClassifier()
-
-    point_history_classifier = PointHistoryClassifier()
-
-    # ラベル読み込み ###########################################################
-    with open('./model/keypoint_classifier/keypoint_classifier_label.csv',
-              encoding='utf-8-sig') as f:
-        keypoint_classifier_labels = csv.reader(f)
-        keypoint_classifier_labels = [
-            row[0] for row in keypoint_classifier_labels
-        ]
-    with open(
-            './model/point_history_classifier/point_history_classifier_label.csv',
-            encoding='utf-8-sig') as f:
-        point_history_classifier_labels = csv.reader(f)
-        point_history_classifier_labels = [
-            row[0] for row in point_history_classifier_labels
-        ]
+    
 
     # FPS計測モジュール ########################################################
     cvFpsCalc = CvFpsCalc(buffer_len=10)
@@ -146,41 +129,16 @@ def main():
                 logging_csv(number, mode, pre_processed_landmark_list,
                             pre_processed_point_history_list)
 
-                # ハンドサイン分類
-                hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
-                
-                #HAND SIGN ID 
-                
-                #BELOW CAN PROBS BE REMOVED...
-                if hand_sign_id == 2:  # 指差しサイン CHECK IF ITS THE POINTER (HIS ORIGINA CODE)
-                    point_history.append(landmark_list[8])  # 人差指座標
-                else:
-                    point_history.append([0, 0])
-
-                # フィンガージェスチャー分類
-                finger_gesture_id = 0
-                point_history_len = len(pre_processed_point_history_list)
-                if point_history_len == (history_length * 2):
-                    finger_gesture_id = point_history_classifier(
-                        pre_processed_point_history_list)
-
-                # 直近検出の中で最多のジェスチャーIDを算出
-                finger_gesture_history.append(finger_gesture_id)
-                most_common_fg_id = Counter(
-                    finger_gesture_history).most_common()
                 
                 
                 
-                #sign name is                keypoint_classifier_labels[hand_sign_id]
-                
+               
                 #make a buffer of 8? will be changed with processing speed.. ill do shitty ver for now
-                #previousSign=keypoint_classifier_labels[hand_sign_id]
+                
                 
                 gestures = ["Pass","Stop","Execute","One","Zero","Turn Clockwise","Turn Anticlockwise","Go Forward","Erase commands","Stop listening","Two","Three"]
                 
                 seenSign=gestures[hand_sign_id]
-                
-                
                 
                 if seenSign != previousSign:
                     buffer+=1

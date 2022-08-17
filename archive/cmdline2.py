@@ -39,7 +39,7 @@ def get_args():
 
 
 def main():
-    
+    # 引数解析 #################################################################
     args = get_args()
 
     cap_device = args.device
@@ -52,7 +52,7 @@ def main():
 
     use_brect = True
 
-    
+    # カメラ準備 ###############################################################
     cap = cv.VideoCapture(cap_device)
     cap.set(cv.CAP_PROP_FRAME_WIDTH, cap_width)
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, cap_height)
@@ -68,7 +68,6 @@ def main():
 
     keypoint_classifier = KeyPointClassifier()
 
-    point_history_classifier = PointHistoryClassifier()
 
     # ラベル読み込み ###########################################################
     with open('./model/keypoint_classifier/keypoint_classifier_label.csv',
@@ -77,14 +76,7 @@ def main():
         keypoint_classifier_labels = [
             row[0] for row in keypoint_classifier_labels
         ]
-    with open(
-            './model/point_history_classifier/point_history_classifier_label.csv',
-            encoding='utf-8-sig') as f:
-        point_history_classifier_labels = csv.reader(f)
-        point_history_classifier_labels = [
-            row[0] for row in point_history_classifier_labels
-        ]
-
+    
     # FPS計測モジュール ########################################################
     cvFpsCalc = CvFpsCalc(buffer_len=10)
 
@@ -92,20 +84,11 @@ def main():
     history_length = 16
     point_history = deque(maxlen=history_length)
 
-    # フィンガージェスチャー履歴 ################################################
-    finger_gesture_history = deque(maxlen=history_length)
 
     #  ########################################################################
     mode = 0
-    
-    
-    commands=[]
-    buffer=0
-    previousSign=''
-    listening=True
-    print("Initialised")
+
     while True:
-        #print("Running")
         fps = cvFpsCalc.get()
 
         # キー処理(ESC：終了) #################################################
@@ -140,96 +123,16 @@ def main():
                 # 相対座標・正規化座標への変換
                 pre_processed_landmark_list = pre_process_landmark(
                     landmark_list)
-                pre_processed_point_history_list = pre_process_point_history(
-                    debug_image, point_history)
                 # 学習データ保存
-                logging_csv(number, mode, pre_processed_landmark_list,
-                            pre_processed_point_history_list)
+                logging_csv(number, mode, pre_processed_landmark_list)
 
                 # ハンドサイン分類
                 hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
-                
-                #HAND SIGN ID 
-                
-                #BELOW CAN PROBS BE REMOVED...
-                if hand_sign_id == 2:  # 指差しサイン CHECK IF ITS THE POINTER (HIS ORIGINA CODE)
+                if hand_sign_id == 2:  # 指差しサイン
                     point_history.append(landmark_list[8])  # 人差指座標
                 else:
                     point_history.append([0, 0])
 
-                # フィンガージェスチャー分類
-                finger_gesture_id = 0
-                point_history_len = len(pre_processed_point_history_list)
-                if point_history_len == (history_length * 2):
-                    finger_gesture_id = point_history_classifier(
-                        pre_processed_point_history_list)
-
-                # 直近検出の中で最多のジェスチャーIDを算出
-                finger_gesture_history.append(finger_gesture_id)
-                most_common_fg_id = Counter(
-                    finger_gesture_history).most_common()
-                
-                
-                
-                #sign name is                keypoint_classifier_labels[hand_sign_id]
-                
-                #make a buffer of 8? will be changed with processing speed.. ill do shitty ver for now
-                #previousSign=keypoint_classifier_labels[hand_sign_id]
-                
-                gestures = ["Pass","Stop","Execute","One","Zero","Turn Clockwise","Turn Anticlockwise","Go Forward","Erase commands","Stop listening","Two","Three"]
-                
-                seenSign=gestures[hand_sign_id]
-                
-                
-                
-                if seenSign != previousSign:
-                    buffer+=1
-                    #print('here')
-                    if buffer>20:
-                        
-                        
-                        if listening==True:
-                            previousSign=seenSign
-                            print(seenSign)
-                            buffer=0
-                            
-                            
-                            if seenSign=='Stop listening':
-                                listening=False
-                            
-                            else:
-                                
-                                commands.append(seenSign)
-                                
-                                if seenSign=='Erase commands':
-                                    print("Erasing commands from memory")
-                                    
-                                    commands=[]
-                                if seenSign=='Execute':
-                                    print("Executing commands:")
-                                    commands.remove('Execute')
-                                    try:
-                                        commands.remove('Pass')
-                                    except:
-                                        print(commands)
-                                        commands=[]
-                                    else:
-                                        print(commands)
-                                        commands=[]
-                        elif listening==False and seenSign=='Pass':
-                            print('Recording commands')
-                            listening=True
-                            buffer=0
-                            previousSign=seenSign
-                         
-                            
-                
-                #stop listening command
-                #start listening again by a pass.
-                #Ok, so to read numbers: iterate thru commands 
-                
-                
-                
                 
                 # 描画
                 debug_image = draw_bounding_rect(use_brect, debug_image, brect)
@@ -239,12 +142,11 @@ def main():
                     brect,
                     handedness,
                     keypoint_classifier_labels[hand_sign_id],
-                    point_history_classifier_labels[most_common_fg_id[0][0]],
+                    
                 )
         else:
             point_history.append([0, 0])
 
-        debug_image = draw_point_history(debug_image, point_history)
         debug_image = draw_info(debug_image, fps, mode, number)
 
         # 画面反映 #############################################################
@@ -255,21 +157,15 @@ def main():
 
 
 def select_mode(key, mode):
+    #https://www.ascii-code.com/
     number = -1
     if 48 <= key <= 57:  # 0 ~ 9
         number = key - 48
-    if key == 113 : #lowercase q is pressed
-        number = 10
-    if key == 119 : #lowercase w is pressed
-        number = 11   
-    if key == 101 : #lowercase e is pressed
-        number = 12 
     if key == 110:  # n
         mode = 0
     if key == 107:  # k
         mode = 1
-    if key == 104:  # h
-        mode = 2
+    
     return number, mode
 
 
@@ -357,19 +253,15 @@ def pre_process_point_history(image, point_history):
     return temp_point_history
 
 
-def logging_csv(number, mode, landmark_list, point_history_list):
+def logging_csv(number, mode, landmark_list):
     if mode == 0:
         pass
-    if mode == 1 and (0 <= number <= 12):#make this bigger to expand number of commands
+    if mode == 1 and (0 <= number <= 9):
         csv_path = './model/keypoint_classifier/keypoint.csv'
         with open(csv_path, 'a', newline="") as f:
             writer = csv.writer(f)
             writer.writerow([number, *landmark_list])
-    if mode == 2 and (0 <= number <= 9):
-        csv_path = './model/point_history_classifier/point_history.csv'
-        with open(csv_path, 'a', newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow([number, *point_history_list])
+    
     return
 
 
@@ -592,13 +484,6 @@ def draw_info_text(image, brect, handedness, hand_sign_text,
     return image
 
 
-def draw_point_history(image, point_history):
-    for index, point in enumerate(point_history):
-        if point[0] != 0 and point[1] != 0:
-            cv.circle(image, (point[0], point[1]), 1 + int(index / 2),
-                      (152, 251, 152), 2)
-
-    return image
 
 
 def draw_info(image, fps, mode, number):
