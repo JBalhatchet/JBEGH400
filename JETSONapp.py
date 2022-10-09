@@ -120,7 +120,8 @@ def main():
 
                 
                 
-                
+                #                seenSign=keypoint_classifier_labels[hand_sign_id]
+
                 gestures = ["Pass","Stop","Execute","One","Zero","Turn Clockwise","Turn Anticlockwise","Go Forward","Erase commands","Stop listening","Two","Three"]
                 
                 seenSign=gestures[hand_sign_id]
